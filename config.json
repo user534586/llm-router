@@ -55,7 +55,7 @@
     "default_mode": "fallback",
     "persist_mode": true,
 
-    "_comment_fallback_on": "本地失败后，哪些错误允许降级云端。",
+    "_comment_fallback_on": "本地失败后，哪些错误允许降级云端。另：上游回 200 但 body 里带 error 的，按 http_5xx 判断。",
     "fallback_on": {
       "timeout": true,
       "connection_error": true,

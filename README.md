@@ -73,6 +73,7 @@ curl "http://127.0.0.1:8100/route?mode=fallback"
 | `config.json` | **配置文件**，改这里就行 |
 | `router.py` | 路由服务主程序 |
 | `mode.state` | 当前路由模式（`persist_mode=true` 时自动生成，删掉=回到 `default_mode`） |
+| `router.pid` | 后台启动（`start-bg.bat`）时写入的进程号，`stop.bat` 靠它精确收进程 |
 | `start.bat` / `start-bg.bat` / `stop.bat` / `status.bat` | 启动/后台启动/停止/状态 |
 | `tests/selftest_router.py` | 主流程自测（假上游，19 项断言，不花钱） |
 | `tests/selftest_v2.py` | 新特性自测（前缀模式/兜底/多模态/持久化/轮转，22 项断言） |
@@ -90,17 +91,25 @@ curl "http://127.0.0.1:8100/route?mode=fallback"
 3. **Model 填 `auto`** —— 这样路由服务自己决定走本地还是哪条云端，
    你在聊天里发 `/route xxx` 就能随时指挥。
    若想直连某条云端，就填那条云端的 model 名（如 `deepseek-v4.1-flash`）或别名（如 `deepseek`）。
-4. API Key 随便填（路由服务自己不校验）
+4. API Key 随便填（默认不校验；一旦配了 `server.api_token`，就必须填它）
 5. `config.json` 里 `server.host`：只本机用就 `127.0.0.1`，手机等设备也要连就 `0.0.0.0`
 
-> 说明：服务默认监听 `0.0.0.0` 且**不校验调用方**，仅限内网自用；
+> 说明：服务默认监听 `0.0.0.0` 且**默认不校验调用方**，仅限内网自用；
 > `config.json` 里是明文 API key，别把这个端口暴露到公网。
+>
+> 想加个最简门禁就配 `server.api_token`（配了之后客户端 API Key 必须填它，
+> 不带或带错一律 401）。
 
 ## 配置说明 (config.json)
 
 ```jsonc
 {
-  "server": { "host": "0.0.0.0", "port": 8100 },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8100,
+    "api_token": "",      // 可选：填了之后调用方必须带 Authorization: Bearer <它>，否则 401
+    "max_workers": 0      // 可选：并发处理上限，0=不限制（每请求一线程）
+  },
 
   "local": {
     "base_url": "http://localhost:11434/v1",
@@ -155,9 +164,11 @@ curl "http://127.0.0.1:8100/route?mode=fallback"
       "http_401": true,           // 密钥失效/欠费（401）→ 降级
       "http_402": true,           // 余额不足（402）→ 降级
       "http_403": true,           // 无权访问（403）→ 降级
-      "context_overflow": true,   // 超上下文窗口 → 降级
+      "context_overflow": true,   // 超上下文窗口 → 降级（含 HTTP 413）
       "http_4xx": false           // 其他 4xx（请求本身有问题）默认不降级
     },
+    // 另有一种情况：上游回 200 但 body 里塞了 {"error":...}（部分网关这样干），
+    // 这种按 http_5xx 决定是否继续降级，不当成功响应透传。
 
     "pin_fallback": true,         // model=<云端名> 指名时，它挂了是否继续试其它云端
                                   // /route <云端名> 的严格指定不受此项影响
@@ -187,7 +198,8 @@ curl "http://127.0.0.1:8100/route?mode=fallback"
   },
 
   "log": {
-    "level": "info",
+    "level": "info",       // debug < info < warn < error，低于该级别的直接丢掉
+    "console": true,       // 是否同时打到 stdout（后台启动时 stdout 会重定向到 stdout.log）
     "file": "logs/router.log",
     "max_bytes": 5242880,         // 超过 5MB 轮转
     "backup_count": 3             // 最多留 3 个历史文件（.1 .2 .3）
@@ -209,6 +221,9 @@ curl "http://127.0.0.1:8100/route?mode=fallback"
 | 跳过本地只用云端 | `router.prefer_local` 设 `false` |
 | 本地一挂就别再试 | `local_health.enabled` 设 `true`（默认） |
 | 别把用户原文写日志 | `router.chat_route_debug` 保持 `false` |
+| 要个简单门禁 | `server.api_token` 填上，客户端 API Key 就填它 |
+| 限制并发 | `server.max_workers` 设 16~64（上游 timeout 很长时） |
+| 日志别存两份 | `log.console` 设 `false` |
 
 改完 `config.json` 后**重启服务**生效。
 
@@ -301,5 +316,6 @@ curl http://127.0.0.1:8100/route
 | 全挂 | 502/503 响应体里有 `tried`，每条链路的失败原因都在 |
 | 回复是空的 | 看日志有没有 `reasoning_fallback` WARN；有的话说明是上游 `max_tokens` 不够，调大即可 |
 | 报 `invalid_model` | model 填了 `config.json` 里没有的名字；报错信息里有可用清单，或看 `GET /health` 的 `models` |
+| 全部回 401 | `server.api_token` 配了但客户端没带（客户端 API Key 要填它） |
 | 不知道走的哪条 | 看正文前缀、`X-Router-Source` 响应头，或日志里的 `plan mode=... plan=[...]` |
 | 模式重启后变了 | 检查 `persist_mode`；`mode.state` 存着上次的模式，删掉即回到 `default_mode` |
