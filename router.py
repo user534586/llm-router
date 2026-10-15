@@ -229,6 +229,12 @@ def _open(req, timeout):
             body_bytes = e.read()
         except Exception:
             pass
+        finally:
+            # HTTPError 带着 fd，不关就漏一个 socket（每次 4xx/5xx 降级漏一个）
+            try:
+                e.close()
+            except Exception:
+                pass
         detail = body_bytes[:400].decode("utf-8", "ignore")
         raise UpstreamError(_classify_http(e.code, detail), "HTTP %d: %s" % (e.code, detail))
     except urllib.error.URLError as e:
