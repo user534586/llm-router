@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+logs/
+router.pid
+
+# 运行态文件：/route 切过的模式 / 测试残留
+mode.state
+tests/mode.state.test
