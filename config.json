@@ -97,6 +97,8 @@
 
   "log": {
     "level": "info",
+    "_comment_console": "是否同时打到 stdout。后台启动时 stdout 会重定向到 logs/stdout.log，不想日志存两份就设 false。",
+    "console": true,
     "file": "logs/router.log",
     "_comment_log": "日志按大小轮转：超过 max_bytes 就 router.log.1 / .2 / .3，最多留 backup_count 个。",
     "max_bytes": 5242880,

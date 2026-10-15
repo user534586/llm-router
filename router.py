@@ -107,6 +107,9 @@ class Logger:
     def __init__(self, cfg):
         log_cfg = cfg.get("log", {}) or {}
         self.level = LOG_LEVELS.get(str(log_cfg.get("level", "info")).lower(), 20)
+        # 后台模式下 stdout 会被重定向到 logs/stdout.log，
+        # 不想日志存两份就把 log.console 设 false
+        self.console = bool(log_cfg.get("console", True))
         self.path = os.path.join(BASE_DIR, log_cfg.get("file", "logs/router.log"))
         self.max_bytes = int(log_cfg.get("max_bytes", 0) or 0)
         self.backup_count = max(0, int(log_cfg.get("backup_count", 3) or 0))
@@ -154,10 +157,11 @@ class Logger:
                 self._rotate_locked()
             except Exception:
                 pass
-        try:
-            print(line, flush=True)
-        except Exception:
-            pass
+        if self.console:
+            try:
+                print(line, flush=True)
+            except Exception:
+                pass
 
     def info(self, msg):
         if self.level <= 20:
