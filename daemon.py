@@ -16,6 +16,7 @@ PY = sys.executable
 ROUTER = os.path.join(BASE, "router.py")
 CONFIG = os.environ.get("LLM_ROUTER_CONFIG") or os.path.join(BASE, "config.json")
 LOG = os.path.join(BASE, "logs", "stdout.log")
+PID_FILE = os.path.join(BASE, "router.pid")
 os.makedirs(os.path.dirname(LOG), exist_ok=True)
 
 
@@ -63,6 +64,12 @@ def main():
         close_fds=True,
     )
     print("llm-router started, pid=%s, port=%s" % (p.pid, port))
+    # 记下 pid，stop.bat 靠它精确收进程（不再靠 netstat 猜端口）
+    try:
+        with open(PID_FILE, "w", encoding="utf-8") as pf:
+            pf.write(str(p.pid))
+    except Exception as e:
+        print("warn: cannot write %s: %s" % (PID_FILE, e))
     return 0
 
 
