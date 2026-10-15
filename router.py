@@ -318,12 +318,21 @@ class Health:
         with self._lock:
             return self._last_error.get(key, "")
 
-    def note_success(self, key):
+    def note_success(self, key, reset_breaker=True):
+        """记一次成功。
+
+        reset_breaker=False 用于后台探活：探活只证明"端口还活着"，不代表
+        真实 chat 请求能成（模型 OOM、超窗、加载中都会让 /models 照样 200）。
+        所以探活只清 unhealthy 冷却，不动熔断计数，否则本地永远攒不满
+        threshold，熔断形同虚设。
+        """
         with self._lock:
-            self._fails[key] = 0
-            self._open_until.pop(key, None)
+            if reset_breaker:
+                self._fails[key] = 0
+                self._open_until.pop(key, None)
             self._unhealthy_until.pop(key, None)
-            self._last_error.pop(key, None)
+            if reset_breaker:
+                self._last_error.pop(key, None)
 
     def note_failure(self, key, reason, detail=""):
         cb = router_cfg().get("circuit_breaker", {}) or {}
@@ -381,7 +390,8 @@ def local_probe_loop():
             if was_down:
                 LOG.info("local health: RECOVERED (%s)" % url)
                 was_down = False
-            HEALTH.note_success(LOCAL_KEY)
+            # 只清探活冷却，不碰熔断计数（见 Health.note_success 的说明）
+            HEALTH.note_success(LOCAL_KEY, reset_breaker=False)
         except Exception as e:
             why = "probe failed: %s" % (e,)
             if not was_down:
