@@ -89,7 +89,6 @@
     "smart_route": {
       "enabled": true,
       "local_max_ctx": 64000,
-      "short_max": 8000,
       "bytes_per_token": 4
     },
 
