@@ -1,5 +1,7 @@
 {
   "server": {
+    "_comment_token": "可选：填了之后调用方每次都要带 Authorization: Bearer <api_token>，否则 401。留空=不校验（跟以前一样）。",
+    "api_token": "",
     "host": "0.0.0.0",
     "port": 8100
   },

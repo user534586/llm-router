@@ -1307,6 +1307,23 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+    # ---- 可选鉴权 ----
+    def _authorized(self):
+        """server.api_token 为空就不校验（跟以前一样）；配了就必须带上。"""
+        token = str((CFG.get("server", {}) or {}).get("api_token", "") or "")
+        if not token:
+            return True
+        auth = (self.headers.get("Authorization") or "").strip()
+        given = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+        if not given:
+            given = (self.headers.get("X-Api-Key") or "").strip()
+        if given == token:
+            return True
+        self._send(401, json.dumps(
+            {"error": {"message": "unauthorized: 需要 server.api_token（Authorization: Bearer ...）",
+                       "type": "unauthorized"}}, ensure_ascii=False))
+        return False
+
     # ---- 输出 ----
     def _send(self, status, body, content_type="application/json", extra_headers=None):
         if isinstance(body, str):
@@ -1367,6 +1384,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- GET ----
     def do_GET(self):
+        if not self._authorized():
+            return
         if self.path.startswith("/health"):
             snap = HEALTH.snapshot()
             now = time.time()
@@ -1460,6 +1479,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- POST ----
     def do_POST(self):
+        if not self._authorized():
+            return
         if self.path.startswith("/route"):
             self._handle_route()
             return
