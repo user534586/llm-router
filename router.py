@@ -285,6 +285,24 @@ def open_upstream_stream(endpoint_cfg, body):
     return _open(req, timeout)
 
 
+def body_error_snippet(resp_bytes):
+    """部分中转网关出错也回 HTTP 200，把错误塞在 body 的 error 字段里。
+
+    返回非空即代表这次调用实际是失败的。
+    """
+    try:
+        obj = json.loads(resp_bytes.decode("utf-8", "ignore"))
+    except Exception:
+        return ""
+    err = obj.get("error") if isinstance(obj, dict) else None
+    if isinstance(err, str) and err:
+        return err[:300]
+    if isinstance(err, dict):
+        return ("%s: %s" % (err.get("type") or err.get("code") or "error",
+                            err.get("message") or ""))[:300]
+    return ""
+
+
 def should_fallback(err):
     """本地失败后是否允许降级云端（由 router.fallback_on 决定）。"""
     fo = router_cfg().get("fallback_on", {}) or {}
@@ -298,6 +316,8 @@ def should_fallback(err):
         "http_403": "http_403",
         "context_overflow": "context_overflow",
         "http_4xx": "http_4xx",
+        # 上游 200 但 body 里带 error：按上游故障算，默认允许降级
+        "http_200_error": "http_5xx",
     }.get(err.reason)
     if key is None:
         return False
@@ -1179,6 +1199,15 @@ def route_chat(body):
             tried.append((label, e.reason, e.detail))
             LOG.warn("!! %s failed: %s :: %s" % (label, e.reason, e.detail))
             if kind == "local" and not should_fallback(e):
+                break
+            continue
+        # 上游 200 但 body 里塞了 error：算失败，让后面的链路接上
+        detail = body_error_snippet(resp) if status == 200 else ""
+        if detail:
+            HEALTH.note_failure(_key_of(kind, label), "http_200_error", detail)
+            tried.append((label, "http_200_error", detail))
+            LOG.warn("!! %s returned 200 with error body: %s" % (label, detail))
+            if kind == "local" and not should_fallback(UpstreamError("http_200_error", detail)):
                 break
             continue
         HEALTH.note_success(_key_of(kind, label))
