@@ -76,7 +76,7 @@ curl "http://127.0.0.1:8100/route?mode=fallback"
 | `router.pid` | 后台启动（`start-bg.bat`）时写入的进程号，`stop.bat` 靠它精确收进程 |
 | `start.bat` / `start-bg.bat` / `stop.bat` / `status.bat` | 启动/后台启动/停止/状态 |
 | `tests/selftest_router.py` | 主流程自测（假上游，19 项断言，不花钱） |
-| `tests/selftest_v2.py` | 新特性自测（前缀模式/兜底/多模态/持久化/轮转，22 项断言） |
+| `tests/selftest_v2.py` | 新特性自测（前缀模式/兜底/多模态/持久化/轮转/别名接力，24 项断言） |
 | `tests/smoke_real.py` | 真实链路冒烟（真本地 + 真云端，很小 token） |
 | `tests/smoke_prefix.py` | 验证云端正文前缀 |
 | `logs/router.log` | 运行日志（超过 `log.max_bytes` 自动轮转成 `.1/.2/.3`） |

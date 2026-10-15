@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """llm-router 第二轮自测：前缀模式 / 空正文兜底 / 未知 model / 多模态 / 响应头 /
-模式持久化 / 日志轮转 / 云端别名。
+模式持久化 / 日志轮转 / 云端别名 / 别名点名接力。
 
 用法：python tests/selftest_v2.py
 """
@@ -250,6 +250,20 @@ def main():
         # --- /route info 提示前缀模式 ---
         st, raw = chat(8105, {"model": "auto", "messages": [{"role": "user", "content": "/route info"}]})
         check("V17 聊天内 /route info 带上前缀模式说明", st == 200 and "前缀模式" in raw, raw[:160])
+    finally:
+        stop_router(proc)
+
+    # ================= router A：别名点名也要能接力 =================
+    # 8096 故意没人监听，模拟"别名点名的那条云端挂了"
+    proc, log = start_router("cfg_alias.json", 8107, "test_alias.log")
+    print("[router A] port 8107 (alias d1 -> dead cloud, pin_fallback=true)")
+    try:
+        st, h, raw = chat_h(8107, {"model": "d1", "messages": [{"role": "user", "content": "hi"}]})
+        content = msg_content(raw).get("content") or ""
+        check("A1 别名点名的云端挂了也能接力下一条（pin_fallback 对别名同样生效）",
+              st == 200 and "served-by:fakeA-model" in content, (st, content))
+        check("A2 接力后 X-Router-Source 报的是真正命中的那条",
+              h.get("X-Router-Source") == "cloud[fakeA]", h.get("X-Router-Source"))
     finally:
         stop_router(proc)
 

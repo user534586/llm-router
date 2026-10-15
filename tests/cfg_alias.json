@@ -1,0 +1,38 @@
+{
+  "server": { "host": "127.0.0.1", "port": 8107 },
+  "local": {
+    "base_url": "http://127.0.0.1:8095/v1",
+    "model": "local",
+    "api_key": "k",
+    "timeout": 10
+  },
+  "clouds": [
+    { "name": "dead", "alias": ["d1"], "base_url": "http://127.0.0.1:8096/v1",
+      "model": "dead-model", "api_key": "k", "timeout": 3, "enabled": true },
+    { "name": "fakeA", "alias": ["fa"], "base_url": "http://127.0.0.1:8095/v1",
+      "model": "fakeA-model", "api_key": "k", "timeout": 10, "enabled": true }
+  ],
+  "router": {
+    "enabled": true,
+    "cloud_prefix": "[via:{name}({model})] ",
+    "prefix_mode": "off",
+    "unknown_model": "error",
+    "empty_content_fallback": "off",
+    "multimodal_force_local": false,
+    "fallback_on": {
+      "timeout": true, "connection_error": true, "http_5xx": true, "http_429": true,
+      "http_401": true, "http_402": true, "http_403": true, "context_overflow": true,
+      "http_4xx": false
+    },
+    "pin_fallback": true,
+    "chat_route_enabled": false,
+    "chat_route_debug": false,
+    "local_health": { "enabled": false },
+    "circuit_breaker": { "enabled": false },
+    "smart_route": { "enabled": false },
+    "prefer_local": true,
+    "default_mode": "fallback",
+    "persist_mode": false
+  },
+  "log": { "level": "info", "file": "logs/test_alias.log", "max_bytes": 0, "backup_count": 0 }
+}
