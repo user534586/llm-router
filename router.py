@@ -638,8 +638,11 @@ def parse_route_command(body):
         return ("status", None)
     if stripped.startswith("/route"):
         rest = stripped[len("/route"):].strip()
-        if rest and (" " not in rest) and ("\n" not in rest) and (rest in mode_alias_map()):
-            return ("route", rest)
+        if rest and (" " not in rest) and ("\n" not in rest):
+            if rest in mode_alias_map():
+                return ("route", rest)
+            # 拼错/不存在的模式：拦下来回提示，别当成普通消息烧一次真实调用
+            return ("unknown", rest)
     return None
 
 
@@ -697,6 +700,16 @@ def _handle_chat_command(cmd, body):
         if target.startswith(MODE_PIN_PREFIX) and not chain_for_pin(target[len(MODE_PIN_PREFIX):]):
             text += "\n（警告：没有匹配的云端，检查 config.json 里的 name / alias）"
         text += "\n\n" + _current_status_text()
+    elif kind == "unknown":
+        LOG.info("CHAT-ROUTE: unknown mode word %r -> reply hint only" % (arg,))
+        words = ["fallback", "local", "cloud"]
+        for c in enabled_clouds():
+            for t in cloud_tokens(c):
+                if t not in words:
+                    words.append(t)
+        text = ("没有这个模式：%s\n当前模式没变，还是「%s」。\n\n可以这样用：\n%s"
+                % (arg, _mode_cn(ManualOverride.get_mode()),
+                   "\n".join("  /route " + w for w in words)))
     else:
         LOG.info("CHAT-ROUTE: status query -> %s" % ManualOverride.get_mode())
         text = _current_status_text()
