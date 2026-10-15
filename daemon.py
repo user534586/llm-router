@@ -40,12 +40,16 @@ def main():
         with open(CONFIG, "r", encoding="utf-8") as f:
             cfg = json.load(f)
         port = cfg.get("server", {}).get("port", 8100)
+        host = str(cfg.get("server", {}).get("host", "127.0.0.1") or "127.0.0.1")
     except Exception as e:
         print("读不到配置 %s: %s" % (CONFIG, e))
         return 1
 
-    if port_in_use(port):
-        print("端口 %s 已有服务在监听 —— 可能路由器已经在跑了。" % port)
+    # 0.0.0.0 / :: 监听时 127.0.0.1 一定能连上；绑到具体网卡就用那个地址探
+    probe_host = host if host not in ("0.0.0.0", "::", "", "localhost") else "127.0.0.1"
+
+    if port_in_use(port, probe_host):
+        print("端口 %s (%s) 已有服务在监听 —— 可能路由器已经在跑了。" % (port, probe_host))
         print("要重启请先执行 stop.bat，再来一次。")
         return 1
 
