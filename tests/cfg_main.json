@@ -1,0 +1,35 @@
+{
+  "server": { "host": "127.0.0.1", "port": 8101 },
+  "local": {
+    "base_url": "http://127.0.0.1:8099/v1",
+    "model": "local",
+    "model_full_name": "/models/local.gguf",
+    "api_key": "k",
+    "timeout": 10,
+    "input_modalities": ["text"],
+    "capabilities": ["completion"]
+  },
+  "clouds": [
+    { "name": "fakeA", "alias": ["fa"], "base_url": "http://127.0.0.1:8098/v1",
+      "model": "fakeA-model", "api_key": "k", "timeout": 10, "enabled": true },
+    { "name": "fakeB", "alias": ["deepseek"], "base_url": "http://127.0.0.1:8098/v1",
+      "model": "fakeB-model", "api_key": "k", "timeout": 10, "enabled": true }
+  ],
+  "router": {
+    "enabled": true,
+    "cloud_prefix": "[via:{name}({model})] ",
+    "fallback_on": {
+      "timeout": true, "connection_error": true, "http_5xx": true, "http_429": true,
+      "http_401": true, "http_402": true, "http_403": true, "context_overflow": true,
+      "http_4xx": false
+    },
+    "pin_fallback": false,
+    "chat_route_enabled": true,
+    "chat_route_debug": false,
+    "local_health": { "enabled": false, "interval": 30, "cooldown": 60 },
+    "circuit_breaker": { "enabled": false, "threshold": 3, "cool_down": 120 },
+    "smart_route": { "enabled": true, "local_max_ctx": 3000, "short_max": 8000, "bytes_per_token": 4 },
+    "prefer_local": true
+  },
+  "log": { "level": "info", "file": "logs/test_main.log" }
+}

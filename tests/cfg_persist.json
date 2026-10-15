@@ -1,0 +1,36 @@
+{
+  "server": { "host": "127.0.0.1", "port": 8106 },
+  "local": {
+    "base_url": "http://127.0.0.1:8095/v1",
+    "model": "local",
+    "api_key": "k",
+    "timeout": 10
+  },
+  "clouds": [
+    { "name": "fakeA", "alias": ["fa"], "base_url": "http://127.0.0.1:8095/v1",
+      "model": "fakeA-model", "api_key": "k", "timeout": 10, "enabled": true }
+  ],
+  "router": {
+    "enabled": true,
+    "cloud_prefix": "[via:{name}({model})] ",
+    "prefix_mode": "every",
+    "unknown_model": "error",
+    "empty_content_fallback": "reasoning",
+    "multimodal_force_local": true,
+    "fallback_on": {
+      "timeout": true, "connection_error": true, "http_5xx": true, "http_429": true,
+      "http_401": true, "http_402": true, "http_403": true, "context_overflow": true,
+      "http_4xx": false
+    },
+    "pin_fallback": false,
+    "chat_route_enabled": true,
+    "chat_route_debug": false,
+    "local_health": { "enabled": false },
+    "circuit_breaker": { "enabled": false },
+    "smart_route": { "enabled": false },
+    "prefer_local": true,
+    "default_mode": "cloud",
+    "persist_mode": true
+  },
+  "log": { "level": "info", "file": "logs/test_persist.log", "max_bytes": 1500, "backup_count": 2 }
+}

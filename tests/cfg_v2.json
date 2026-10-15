@@ -1,0 +1,42 @@
+{
+  "server": { "host": "127.0.0.1", "port": 8105 },
+  "local": {
+    "base_url": "http://127.0.0.1:8099/v1",
+    "model": "local",
+    "model_full_name": "/models/local.gguf",
+    "api_key": "k",
+    "timeout": 10,
+    "input_modalities": ["text", "image"],
+    "capabilities": ["completion", "multimodal"]
+  },
+  "clouds": [
+    { "name": "reason", "alias": ["rsn", "reasoner"], "base_url": "http://127.0.0.1:8094/v1",
+      "model": "reason-model", "api_key": "k", "timeout": 10, "enabled": true },
+    { "name": "fakeA", "alias": ["fa"], "base_url": "http://127.0.0.1:8095/v1",
+      "model": "fakeA-model", "api_key": "k", "timeout": 10, "enabled": true }
+  ],
+  "router": {
+    "enabled": true,
+    "cloud_prefix": "[via:{name}({model})] ",
+    "prefix_mode": "smart",
+    "unknown_model": "error",
+    "empty_content_fallback": "reasoning",
+    "reasoning_fallback_marker": "",
+    "multimodal_force_local": true,
+    "fallback_on": {
+      "timeout": true, "connection_error": true, "http_5xx": true, "http_429": true,
+      "http_401": true, "http_402": true, "http_403": true, "context_overflow": true,
+      "http_4xx": false
+    },
+    "pin_fallback": false,
+    "chat_route_enabled": true,
+    "chat_route_debug": false,
+    "local_health": { "enabled": false, "interval": 30, "cooldown": 60 },
+    "circuit_breaker": { "enabled": false, "threshold": 3, "cool_down": 120 },
+    "smart_route": { "enabled": false },
+    "prefer_local": true,
+    "default_mode": "fallback",
+    "persist_mode": false
+  },
+  "log": { "level": "info", "file": "logs/test_v2.log", "max_bytes": 0, "backup_count": 0 }
+}

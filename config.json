@@ -1,0 +1,106 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8100
+  },
+
+  "_comment_local": "本地模型。接通就优先用它。model 是发给上游的模型名；model_full_name 用于让上层用真实路径点名（两者都算“本地”）。想让本地也能被别的名字点名，就加 alias 数组。",
+  "local": {
+    "base_url": "http://localhost:11434/v1",
+    "model": "local",
+    "model_full_name": "gguf",
+    "api_key": "sk-no-key-required",
+    "timeout": 180,
+    "input_modalities": ["text", "image", "video"],
+    "capabilities": ["completion", "multimodal"]
+  },
+
+  "_comment_clouds": "云端降级链，按顺序接力。alias 是别名：/route <别名> 可直接指定这条云端，也可以直接用别名当 model 名。",
+  "clouds": [
+    {
+      "name": "dmxapi-deepseek",
+      "alias": ["deepseek"],
+      "base_url": "https://www.dmxapi.cn/v1",
+      "model": "deepseek-v4.1-flash",
+      "api_key": "dmxapi-xxxx",
+      "timeout": 180,
+      "enabled": true
+    }
+  ],
+
+  "router": {
+    "enabled": true,
+
+    "_comment_cloud_prefix": "走云端时给正文加前缀。{name}=云端名，{model}=模型名。留空则不加。工具调用响应永远不加。",
+    "cloud_prefix": "[via:{name}({model})] ",
+
+    "_comment_prefix_mode": "every=每次都加前缀（看得到每次实际走了谁）；smart=历史里最后一条前缀跟这次不同才加（换链路才提示，不污染上下文）；off=不加。",
+    "prefix_mode": "smart",
+
+    "_comment_unknown_model": "model 填了没配置过的名字时怎么办：error=直接 400 报错并列出可用名字（默认，避免静默走云端）；auto=当成自动模式。",
+    "unknown_model": "error",
+
+    "_comment_empty_content": "空正文兜底：content 为空但 reasoning_content 有内容时，把思考内容填进 content（本地思考模型 max_tokens 偏小时正文会是空串）。改成 off 可关掉；reasoning_fallback_marker 是补进正文时的前缀提示，留空则不加。",
+    "empty_content_fallback": "reasoning",
+    "reasoning_fallback_marker": "",
+
+    "_comment_multimodal": "带图/视频的请求在自动模式下强制走本地，不丢给只吃文本的云端。",
+    "multimodal_force_local": true,
+
+    "_comment_mode": "default_mode=启动时的初始模式；persist_mode=true 时用 /route 切过的模式会存进 mode.state，重启不回退。",
+    "default_mode": "fallback",
+    "persist_mode": true,
+
+    "_comment_fallback_on": "本地失败后，哪些错误允许降级云端。",
+    "fallback_on": {
+      "timeout": true,
+      "connection_error": true,
+      "http_5xx": true,
+      "http_429": true,
+      "http_401": true,
+      "http_402": true,
+      "http_403": true,
+      "context_overflow": true,
+      "http_4xx": false
+    },
+
+    "_comment_pin_fallback": "用 model=<云名/别名> 点名某条云端时，它失败后是否还允许继续试剩下的云端（防止点名的云端欠费就整条挂掉）。/route <云名> 的严格指定不受此项影响。",
+    "pin_fallback": true,
+
+    "_comment_chat_route": "聊天内 /route 指令拦截。debug=true 会把用户原文写进日志（占空间，默认关）。",
+    "chat_route_enabled": true,
+    "chat_route_debug": false,
+
+    "_comment_local_health": "本地健康探测：后台每 interval 秒探活，失败后冷却 cooldown 秒内直接走云端。",
+    "local_health": {
+      "enabled": true,
+      "interval": 30,
+      "cooldown": 60
+    },
+
+    "_comment_circuit": "熔断：单条链路连续失败 threshold 次后冷却 cool_down 秒。",
+    "circuit_breaker": {
+      "enabled": true,
+      "threshold": 3,
+      "cool_down": 120
+    },
+
+    "_comment_smart_route": "智能路由：估算请求 token 数，超过 local_max_ctx 直接走云端（本地窗口不够，别白撞）。",
+    "smart_route": {
+      "enabled": true,
+      "local_max_ctx": 64000,
+      "short_max": 8000,
+      "bytes_per_token": 4
+    },
+
+    "prefer_local": true
+  },
+
+  "log": {
+    "level": "info",
+    "file": "logs/router.log",
+    "_comment_log": "日志按大小轮转：超过 max_bytes 就 router.log.1 / .2 / .3，最多留 backup_count 个。",
+    "max_bytes": 5242880,
+    "backup_count": 3
+  }
+}
