@@ -2,6 +2,8 @@
   "server": {
     "_comment_token": "可选：填了之后调用方每次都要带 Authorization: Bearer <api_token>，否则 401。留空=不校验（跟以前一样）。",
     "api_token": "",
+    "_comment_workers": "可选：并发处理上限。0=不限制（每请求一线程）；上游 timeout 很长时建议设 16~64，防止线程爆炸。",
+    "max_workers": 0,
     "host": "0.0.0.0",
     "port": 8100
   },

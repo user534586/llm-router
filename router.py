@@ -45,6 +45,7 @@ import re
 import threading
 import time
 import urllib.error
+import concurrent.futures
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -1558,6 +1559,18 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, json.dumps(resp, ensure_ascii=False))
 
 
+class BoundedThreadingHTTPServer(ThreadingHTTPServer):
+    """限制并发处理线程数（server.max_workers），上游慢时不至于线程无限涨。"""
+
+    def __init__(self, server_address, handler, max_workers):
+        super().__init__(server_address, handler)
+        self._pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="router")
+
+    def process_request(self, request, client_address):
+        self._pool.submit(self.process_request_thread, request, client_address)
+
+
 def main():
     host = CFG["server"]["host"]
     port = CFG["server"]["port"]
@@ -1588,7 +1601,12 @@ def main():
     # 上游 timeout 最长 180s，工作线程若是非 daemon，Ctrl+C 后进程会卡在
     # 等上游那一步退不掉
     ThreadingHTTPServer.daemon_threads = True
-    server = ThreadingHTTPServer((host, port), Handler)
+    max_workers = int((CFG.get("server", {}) or {}).get("max_workers", 0) or 0)
+    if max_workers > 0:
+        LOG.info("  workers: bounded pool (%d)" % max_workers)
+        server = BoundedThreadingHTTPServer((host, port), Handler, max_workers)
+    else:
+        server = ThreadingHTTPServer((host, port), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
