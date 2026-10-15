@@ -974,8 +974,12 @@ def _build_plan(body):
         return plan, info
     if req_model in cloud_by_token:
         c = cloud_by_token[req_model]
+        plan = [("cloud", c, label_of(c))]
+        # 跟"真模型名点名"保持一致：别名点名的云端挂了也允许接力剩下的
+        if router.get("pin_fallback", False):
+            plan += [("cloud", x, label_of(x)) for x in clouds if x is not c]
         info["why"] = "model(别名)=%s -> %s" % (req_model, c.get("name"))
-        return [("cloud", c, label_of(c))], info
+        return plan, info
 
     # 没配置过的 model 名：默认直接报错，避免"随手写个名字结果静默走了云端"
     if req_model and str(req_model) not in AUTO_TOKENS:
