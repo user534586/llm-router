@@ -835,7 +835,8 @@ def local_model_ids():
 
 def known_model_ids():
     """所有能被指定为 model 的名字（用于 400 报错提示和 /v1/models）。"""
-    ids = ["auto"] + local_model_ids()
+    # AUTO_TOKENS 里的别名（自动 / default / router）同样能被填成 model
+    ids = sorted(AUTO_TOKENS) + local_model_ids()
     for c in enabled_clouds():
         ids.append(c.get("model"))
         ids += cloud_tokens(c)
