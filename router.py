@@ -91,11 +91,22 @@ CFG = load_config()
 # --------------------------------------------------------------------------
 LOG_ROTATED = [False]
 
+# 日志级别 -> 数值，越大越严重；_write 时低于 self.level 的直接丢弃
+LOG_LEVELS = {
+    "debug": 10,
+    "info": 20,
+    "warn": 30,
+    "warning": 30,
+    "error": 40,
+    "fatal": 50,
+    "critical": 50,
+}
+
 
 class Logger:
     def __init__(self, cfg):
         log_cfg = cfg.get("log", {}) or {}
-        self.level = log_cfg.get("level", "info")
+        self.level = LOG_LEVELS.get(str(log_cfg.get("level", "info")).lower(), 20)
         self.path = os.path.join(BASE_DIR, log_cfg.get("file", "logs/router.log"))
         self.max_bytes = int(log_cfg.get("max_bytes", 0) or 0)
         self.backup_count = max(0, int(log_cfg.get("backup_count", 3) or 0))
@@ -147,13 +158,16 @@ class Logger:
             pass
 
     def info(self, msg):
-        self._write("INFO", msg)
+        if self.level <= 20:
+            self._write("INFO", msg)
 
     def warn(self, msg):
-        self._write("WARN", msg)
+        if self.level <= 30:
+            self._write("WARN", msg)
 
     def error(self, msg):
-        self._write("ERROR", msg)
+        if self.level <= 40:
+            self._write("ERROR", msg)
 
 
 LOG = Logger(CFG)
