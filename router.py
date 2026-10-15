@@ -137,9 +137,11 @@ class Logger:
                         os.replace(src, dst)
                 os.replace(self.path, self.path + ".1")
             LOG_ROTATED[0] = True
-        except Exception:
-            pass
-        self._size = 0
+        except Exception as e:
+            LOG.warn("log rotate failed: %r" % (e,))
+        # 注意：不能无条件置 0。轮转失败时文件还在原处继续变大，
+        # 若把计数清零就再也不会触发轮转，日志会无限增长。
+        self._size = self._disk_size()
 
     def _write(self, tag, msg):
         line = "%s [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), tag, msg)
