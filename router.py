@@ -212,6 +212,9 @@ def _classify_http(code, detail):
         return "http_5xx"
     if code in (401, 402, 403):
         return "http_%d" % code
+    if code == 413:
+        # 413 Payload Too Large：绝大多数是请求超了上游窗口，按超窗处理才可能降级
+        return "context_overflow"
     lowered = (detail or "").lower()
     if code == 400 and any(k in lowered for k in ("context", "exceed", "too long",
                                                  "too large", "maximum")):
