@@ -1546,6 +1546,9 @@ def main():
         t.start()
         LOG.info("  local health probe: every %ss (cooldown %ss)"
                  % (lh.get("interval", 30), lh.get("cooldown", 60)))
+    # 上游 timeout 最长 180s，工作线程若是非 daemon，Ctrl+C 后进程会卡在
+    # 等上游那一步退不掉
+    ThreadingHTTPServer.daemon_threads = True
     server = ThreadingHTTPServer((host, port), Handler)
     try:
         server.serve_forever()
