@@ -1489,10 +1489,16 @@ class Handler(BaseHTTPRequestHandler):
             params = urllib.parse.parse_qs(parsed.query)
             word = (params.get("mode") or params.get("route") or [None])[0]
         else:
-            length = int(self.headers.get("Content-Length", 0))
+            # Content-Length 可能缺失/非数字，直接 int() 会把连接掐掉，
+            # 客户端连个错误体都收不到
+            try:
+                length = int(self.headers.get("Content-Length", 0) or 0)
+            except (TypeError, ValueError):
+                length = 0
+            length = max(0, min(length, 1 << 20))
             raw = self.rfile.read(length) if length else b""
             try:
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
+                payload = json.loads(raw.decode("utf-8", "ignore")) if raw else {}
                 if isinstance(payload, dict):
                     word = payload.get("mode") or payload.get("route")
             except Exception:
